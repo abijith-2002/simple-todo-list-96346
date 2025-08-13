@@ -1,48 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Header from './components/Header';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Todos from './pages/Todos';
 
-// PUBLIC_INTERFACE
-function App() {
-  const [theme, setTheme] = useState('light');
+/**
+ * PUBLIC_INTERFACE
+ * ProtectedRoute component ensures that only authenticated users can access the given route.
+ * If the user is not authenticated, they will be redirected to the /login page.
+ */
+function ProtectedRoute({ children }) {
+  /** Ensures user is authenticated; redirects if not. */
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
-
+/**
+ * PUBLIC_INTERFACE
+ * AppShell defines the application layout with Header and the main content area.
+ * Individual pages manage their own body layout and sidebars if needed.
+ */
+function AppShell({ children }) {
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app-shell">
+      <Header />
+      {children}
     </div>
+  );
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * AuthOnly guards public auth pages: if user is already authenticated, redirect to dashboard.
+ */
+function AuthOnly({ children }) {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * App is the main entry component that sets up providers and routes for the application.
+ */
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <Todos />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/login" element={<AuthOnly><Login /></AuthOnly>} />
+          <Route path="/register" element={<AuthOnly><Register /></AuthOnly>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
